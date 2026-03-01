@@ -343,9 +343,10 @@ Les données de l’application peuvent être incluses dans les sauvegardes syst
 
 **Correction :**
 Définir :
-```xml
 android:allowBackup="false"
 Ou chiffrer les données sensibles avant stockage.
+
+
 ### 7. Quelle est la différence de risque entre un composant avec `exported="true"` explicite et un avec un `intent-filter` sans attribut `exported` ?
 
 Avant Android 12 (API < 31) :
