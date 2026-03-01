@@ -117,3 +117,59 @@
 ### Preuves (contexte code)
 - Crypto (AES/ECB) : ![crypto_code](images/19.png)
 - MainActivity (root/debug checks) : ![mainactivity_code](images/20.png)
+
+  ## Task 5 — Conversion DEX → JAR (dex2jar)
+
+### Installation
+dex2jar (version 2.x) téléchargé depuis le dépôt officiel GitHub et installé dans `C:\Tools\dex-tools-2.x`.
+
+![dex2jar_installed](images/21.png)
+
+### Extraction des fichiers DEX
+Extraction de `classes.dex` depuis l’APK.
+
+![dex_extracted](images/22.png)
+
+### Conversion DEX → JAR
+Conversion réalisée avec `d2j-dex2jar.bat`.
+
+![dex2jar_conversion](images/23.png)
+
+### Vérification du fichier JAR
+Le fichier `app.jar` a été généré avec succès.
+
+![jar_created](images/24.png)
+
+## Task 6 — Comparaison JADX vs JD-GUI
+
+### Chargement dans JD-GUI
+- Ouverture de `app.jar` généré par dex2jar dans JD-GUI.
+
+![jdgui_open](images/25.png)
+![jdgui_loaded](images/26.png)
+
+### Classe comparée
+Classe analysée dans les deux outils : `sg.vantagepoint.uncrackable1.MainActivity`
+
+![compare](images/27.png)
+
+### Différences notables (≥3)
+
+1. **Gestion des ressources Android (R)**
+   - JADX reconstruit correctement `R.layout` et `R.id` :
+     - `setContentView(R.layout.activity_main)`
+     - `findViewById(R.id.edit_text)`
+   - JD-GUI affiche des IDs numériques :
+     - `setContentView(2130903040)`
+     - `findViewById(2130837505)`
+
+2. **Contexte Android et style du code**
+   - JADX produit un code plus “Android-friendly” (`new AlertDialog.Builder(this)`, `@Override` lisible).
+   - JD-GUI ajoute souvent des casts explicites (`(Context)this`) et un style plus verbeux.
+
+3. **Lisibilité / reconstruction**
+   - JADX offre une lecture plus claire (structure, variables, références Android).
+   - JD-GUI ressemble davantage à une reconstruction “bytecode Java”, avec variables génériques (`paramView`, `paramBundle`) et classes internes plus lourdes.
+
+### Conclusion
+Pour l’analyse statique d’un APK Android (manifest + ressources + code), **JADX** est plus adapté. **JD-GUI** reste utile comme vue alternative Java, notamment pour comparer la décompilation.
