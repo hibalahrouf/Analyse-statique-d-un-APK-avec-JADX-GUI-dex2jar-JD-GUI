@@ -177,7 +177,6 @@ Pour l’analyse statique d’un APK Android (manifest + ressources + code), **J
 
 # Crack — Récupération du secret par analyse statique
 
-## Résumé exécutif
 
 Cette analyse démontre qu’il est possible de récupérer le secret de l’application par simple analyse statique du code APK, sans instrumentation dynamique.
 
