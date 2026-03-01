@@ -346,6 +346,8 @@ Définir :
 android:allowBackup="false"
 Ou chiffrer les données sensibles avant stockage.
 
+---
+
 
 ### 7. Quelle est la différence de risque entre un composant avec `exported="true"` explicite et un avec un `intent-filter` sans attribut `exported` ?
 
