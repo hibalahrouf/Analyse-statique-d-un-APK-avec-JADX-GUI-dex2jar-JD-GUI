@@ -173,3 +173,68 @@ Classe analysée dans les deux outils : `sg.vantagepoint.uncrackable1.MainActivi
 
 ### Conclusion
 Pour l’analyse statique d’un APK Android (manifest + ressources + code), **JADX** est plus adapté. **JD-GUI** reste utile comme vue alternative Java, notamment pour comparer la décompilation.
+
+## Constats détaillés
+
+### Constat #1 : Sauvegarde Android autorisée (allowBackup=true)
+**Sévérité :** Faible à Moyenne  
+**Description :** L’application autorise la sauvegarde Android via `android:allowBackup="true"`.  
+**Localisation :** `AndroidManifest.xml`  
+**Impact potentiel :** Si des données sensibles sont stockées localement, elles pourraient être incluses dans des sauvegardes système.  
+**Remédiation recommandée :** Désactiver la sauvegarde (`android:allowBackup="false"`) ou sécuriser les données sensibles.
+
+---
+
+### Constat #2 : Utilisation d’un schéma cryptographique faible (AES/ECB)
+**Sévérité :** Moyenne  
+**Description :** Le code utilise `"AES/ECB/PKCS7Padding"`, un mode cryptographique considéré faible.  
+**Localisation :** `sg.vantagepoint.a.a` → méthode `a(byte[] bArr, byte[] bArr2)`  
+**Impact potentiel :** Le mode ECB ne protège pas contre l’analyse de motifs dans les données chiffrées.  
+**Remédiation recommandée :** Utiliser AES-GCM ou AES-CBC avec IV aléatoire et authentification.
+
+---
+
+### Constat #3 : Présence d’une chaîne sensible en clair
+**Sévérité :** Moyenne  
+**Description :** La chaîne `"This is the correct secret."` est présente en clair dans le code.  
+**Localisation :** `sg.vantagepoint.uncrackable1.MainActivity#verify(View)`  
+**Impact potentiel :** Exposition de logique sensible directement dans le code client.  
+**Remédiation recommandée :** Éviter les secrets en dur ; déplacer la logique sensible côté serveur si applicable.
+
+---
+
+### Constat #4 : Messages explicites liés au debug
+**Sévérité :** Faible  
+**Description :** L’application affiche le message `"App is debuggable!"` en cas de détection.  
+**Localisation :** `MainActivity#onCreate(Bundle)`  
+**Impact potentiel :** Les messages explicites peuvent révéler les mécanismes de protection.  
+**Remédiation recommandée :** Limiter les messages debug en production.
+
+---
+
+### Constat #5 : Détection d’environnement (root / test-keys) côté client
+**Sévérité :** Faible à Moyenne  
+**Description :** Le code contient des vérifications de root et de build tags (`test-keys`).  
+**Localisation :** `MainActivity#onCreate(Bundle)` et classes associées  
+**Impact potentiel :** Les contrôles côté client peuvent être contournés.  
+**Remédiation recommandée :** Compléter par des mécanismes adaptés selon le contexte (attestation, validation serveur).
+
+## Résumé exécutif
+
+Cette analyse statique de l’application **OWASP UnCrackable Level 1** a permis d’identifier plusieurs points de sécurité pertinents.
+
+Les principales observations concernent :
+
+1. L’utilisation d’un schéma cryptographique faible (AES en mode ECB).
+2. La présence d’une chaîne sensible en clair dans le code (`"This is the correct secret."`).
+3. Des mécanismes de détection root/debug implémentés uniquement côté client.
+
+Aucune permission dangereuse, aucun token, ni clé API de production n’ont été identifiés.  
+Cependant, les pratiques cryptographiques et l’exposition de logique sensible justifient une vigilance particulière.
+
+### Niveau de risque global : **Moyen**
+
+Des améliorations sont recommandées, notamment :
+- Remplacement d’AES/ECB par AES-GCM ou AES-CBC avec IV sécurisé.
+- Éviter les secrets en dur dans le code.
+- Limiter les messages explicites liés aux contrôles de sécurité.
