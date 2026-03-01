@@ -4,7 +4,7 @@
 ## Informations générales
 
 - **Date d'analyse :** 01/03/2026  
-- **Analyste :** Hiba  
+- **Analyste :** Lahrouf Hiba 
 - **Machine hôte :** Windows 10  
 - **Émulateur :** Pixel 6 — Android 16 (API 36, Google APIs x86_64)  
 - **APK analysé :** `UnCrackable-Level1.apk`  
@@ -174,6 +174,37 @@ Classe analysée dans les deux outils : `sg.vantagepoint.uncrackable1.MainActivi
 ### Conclusion
 Pour l’analyse statique d’un APK Android (manifest + ressources + code), **JADX** est plus adapté. **JD-GUI** reste utile comme vue alternative Java, notamment pour comparer la décompilation.
 
+## Task 8 — Nettoyage et conformité
+
+- Vérification effectuée : aucune donnée sensible réelle (token, mot de passe, clé API) présente dans le rapport.
+- Les artefacts d'analyse ont été organisés.
+- Environnement conforme aux règles pédagogiques.
+- Organisation des fichiers
+  ![compare](images/28.png)
+  ### Nettoyage des artefacts temporaires
+
+![cleanup](images/29.png)
+
+## Résumé exécutif
+
+Cette analyse statique de l’application **OWASP UnCrackable Level 1** a permis d’identifier plusieurs points de sécurité pertinents.
+
+Les principales observations concernent :
+
+1. L’utilisation d’un schéma cryptographique faible (AES en mode ECB).
+2. La présence d’une chaîne sensible en clair dans le code (`"This is the correct secret."`).
+3. Des mécanismes de détection root/debug implémentés uniquement côté client.
+
+Aucune permission dangereuse, aucun token, ni clé API de production n’ont été identifiés.  
+Cependant, les pratiques cryptographiques et l’exposition de logique sensible justifient une vigilance particulière.
+
+### Niveau de risque global : **Moyen**
+
+Des améliorations sont recommandées, notamment :
+- Remplacement d’AES/ECB par AES-GCM ou AES-CBC avec IV sécurisé.
+- Éviter les secrets en dur dans le code.
+- Limiter les messages explicites liés aux contrôles de sécurité.
+
 ## Constats détaillés
 
 ### Constat #1 : Sauvegarde Android autorisée (allowBackup=true)
@@ -219,22 +250,143 @@ Pour l’analyse statique d’un APK Android (manifest + ressources + code), **J
 **Impact potentiel :** Les contrôles côté client peuvent être contournés.  
 **Remédiation recommandée :** Compléter par des mécanismes adaptés selon le contexte (attestation, validation serveur).
 
-## Résumé exécutif
+---
 
-Cette analyse statique de l’application **OWASP UnCrackable Level 1** a permis d’identifier plusieurs points de sécurité pertinents.
 
-Les principales observations concernent :
+## Annexes
 
-1. L’utilisation d’un schéma cryptographique faible (AES en mode ECB).
-2. La présence d’une chaîne sensible en clair dans le code (`"This is the correct secret."`).
-3. Des mécanismes de détection root/debug implémentés uniquement côté client.
+### Permissions demandées
+- Aucune permission déclarée
 
-Aucune permission dangereuse, aucun token, ni clé API de production n’ont été identifiés.  
-Cependant, les pratiques cryptographiques et l’exposition de logique sensible justifient une vigilance particulière.
+### Composants exposés
+- MainActivity (MAIN/LAUNCHER)
 
-### Niveau de risque global : **Moyen**
+  ## Questions guidées (Bonus)
 
-Des améliorations sont recommandées, notamment :
-- Remplacement d’AES/ECB par AES-GCM ou AES-CBC avec IV sécurisé.
-- Éviter les secrets en dur dans le code.
-- Limiter les messages explicites liés aux contrôles de sécurité.
+### 1. Quelles permissions demandées par l'application vous semblent excessives par rapport à sa fonction principale ?
+
+L’application **ne demande aucune permission** dans son `AndroidManifest.xml`.  
+Aucune permission excessive n’a été identifiée.  
+Cela réduit significativement la surface d’attaque liée aux permissions Android.
+
+---
+
+### 2. Identifiez un composant exporté et expliquez comment il pourrait être exploité par une application malveillante.
+
+La `MainActivity` est exposée via un `intent-filter` avec :
+
+- `android.intent.action.MAIN`
+- `android.intent.category.LAUNCHER`
+
+Cela est normal pour permettre le lancement de l’application.  
+Cependant, dans un autre contexte, un composant exporté pourrait être exploité si :
+
+- Il accepte des données via `Intent`
+- Il ne valide pas correctement les entrées
+- Il expose des fonctionnalités sensibles
+
+Dans ce cas précis, aucune exploitation directe n’a été identifiée.
+
+---
+
+### 3. Si vous trouvez une URL en clair dans le code, comment recommanderiez-vous de la sécuriser ?
+
+Si une URL en clair était trouvée :
+
+- Utiliser exclusivement **HTTPS**
+- Activer la validation stricte des certificats
+- Éviter le `usesCleartextTraffic="true"`
+- Implémenter le **certificate pinning**
+- Déplacer la logique sensible côté serveur si possible
+
+---
+
+### 4. Comment l'obfuscation du code complique-t-elle l'analyse statique ? Quelles parties restent généralement non obfusquées ?
+
+L’obfuscation (ProGuard/R8) :
+
+- Renomme les classes et méthodes (`a`, `b`, `c`)
+- Supprime certains métadonnées
+- Rend la lecture moins intuitive
+
+Cependant, certaines parties restent généralement non obfusquées :
+
+- `AndroidManifest.xml`
+- Ressources (`res/`)
+- Identifiants `R`
+- Certaines bibliothèques publiques
+
+Cela permet tout de même une analyse partielle.
+
+---
+
+### 5. Comparez les risques entre une application qui stocke un token dans les SharedPreferences et une qui le stocke dans une variable en mémoire.
+
+- **SharedPreferences :**
+  - Stockage persistant
+  - Risque plus élevé si appareil compromis
+  - Peut être extrait via sauvegarde si `allowBackup=true`
+
+- **Variable en mémoire :**
+  - Stockage temporaire
+  - Disparaît à la fermeture de l’application
+  - Risque plus faible
+
+Conclusion : le stockage persistant présente un risque supérieur.
+
+---
+
+### 6. Si vous trouvez `android:allowBackup="true"` dans le manifeste, quel est le risque associé et comment le corriger ?
+
+**Risque :**
+Les données de l’application peuvent être incluses dans les sauvegardes système Android.
+
+**Correction :**
+Définir :
+```xml
+android:allowBackup="false"
+Ou chiffrer les données sensibles avant stockage.
+### 7. Quelle est la différence de risque entre un composant avec `exported="true"` explicite et un avec un `intent-filter` sans attribut `exported` ?
+
+Avant Android 12 (API < 31) :
+
+- Un composant possédant un `intent-filter` pouvait être implicitement exporté, même sans attribut `android:exported`.
+- Cela pouvait exposer involontairement le composant à d'autres applications.
+
+Depuis Android 12 :
+
+- L’attribut `android:exported` doit être explicitement défini pour tout composant ayant un `intent-filter`.
+- Cela réduit les expositions accidentelles.
+
+**Différence de risque :**
+
+- `exported="true"` explicite :  
+  Le développeur indique volontairement que le composant est accessible par d’autres applications.  
+  Le risque dépend alors de la validation des entrées et des contrôles de sécurité implémentés.
+
+- `intent-filter` sans `exported` (avant Android 12) :  
+  Risque plus élevé d’exposition involontaire, car le composant pouvait être accessible sans que le développeur en ait pleinement conscience.
+
+Dans tous les cas, un composant exporté augmente la surface d’attaque s’il manipule des données sensibles sans validation stricte.
+
+---
+
+### 8. Comment évalueriez-vous la sécurité d'une application qui utilise `WebView.setJavaScriptEnabled(true)` ?
+
+L’activation de JavaScript dans une WebView augmente significativement la surface d’attaque.
+
+**Risques potentiels :**
+
+- Exécution de scripts malveillants si du contenu non fiable est chargé
+- Exploitation via XSS si les entrées ne sont pas contrôlées
+- Risque critique si combiné avec `addJavascriptInterface()` (exposition d’objets Java au JavaScript)
+
+**Évaluation de sécurité :**
+
+- Vérifier si JavaScript est réellement nécessaire
+- Vérifier l’origine des URL chargées
+- Empêcher le chargement de contenu non fiable
+- Implémenter des contrôles supplémentaires côté serveur
+
+**Bonne pratique :**
+Désactiver JavaScript si inutile et limiter strictement les sources de contenu chargées dans la WebView.
