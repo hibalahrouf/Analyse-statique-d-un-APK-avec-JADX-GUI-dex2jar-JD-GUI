@@ -174,6 +174,114 @@ Classe analysée dans les deux outils : `sg.vantagepoint.uncrackable1.MainActivi
 ### Conclusion
 Pour l’analyse statique d’un APK Android (manifest + ressources + code), **JADX** est plus adapté. **JD-GUI** reste utile comme vue alternative Java, notamment pour comparer la décompilation.
 
+
+# Crack — Récupération du secret par analyse statique
+
+## Résumé exécutif
+
+Cette analyse démontre qu’il est possible de récupérer le secret de l’application par simple analyse statique du code APK, sans instrumentation dynamique.
+
+Le secret a pu être récupéré par analyse statique, démontrant la faiblesse du mécanisme de validation côté client.
+
+---
+
+## Analyse de la fonction de validation
+
+Dans `MainActivity`, la vérification repose sur l’instruction suivante :
+
+```java
+if (a.a(string)) {
+```
+
+En utilisant la fonctionnalité "Go to declaration" dans JADX, nous accédons à la classe :
+
+sg.vantagepoint.uncrackable1.a
+
+et à la méthode :
+
+```java
+public static boolean a(String str)
+```
+
+Cette méthode :
+
+Convertit une clé hexadécimale en bytes :  
+8d127684cbc37c17616d806cf50473cc
+
+Décode un ciphertext Base64 :  
+5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc=
+
+Effectue un déchiffrement AES via :  
+sg.vantagepoint.a.a.a(...)
+
+Compare le résultat du déchiffrement avec l’entrée utilisateur :
+
+```java
+return str.equals(new String(bArrA));
+```
+![compare](images/32.png)
+![compare](images/33.png)
+
+---
+
+## Analyse cryptographique
+
+La méthode appelée (sg.vantagepoint.a.a.a) utilise :
+
+Algorithme : AES  
+Mode : ECB  
+Padding : PKCS7  
+Taille de clé : 128 bits  
+
+ECB étant un mode déterministe sans IV, le chiffrement peut être reproduit statiquement.
+
+---
+
+## Déchiffrement manuel
+
+En reproduisant le déchiffrement AES-ECB à l’aide de CyberChef :
+
+Clé (HEX) :  
+8d127684cbc37c17616d806cf50473cc  
+
+Ciphertext (Base64) :  
+5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc=
+
+Le texte en clair obtenu est :
+
+I want to believe
+
+![compare](images/30.png)
+
+---
+
+## Validation dans l’émulateur
+
+Après saisie du secret récupéré dans l’application :
+
+L’application affiche :
+
+![compare](images/31.png)
+
+---
+
+## Conclusion du crack
+
+Le secret est entièrement stocké et validé côté client.  
+Il peut être récupéré par simple analyse statique sans instrumentation dynamique.
+
+Cela démontre :
+
+La faiblesse du stockage de secrets côté client  
+
+L’insuffisance d’une protection basée uniquement sur le chiffrement local  
+
+L’utilisation d’un mode cryptographique faible (AES/ECB)  
+
+L’absence de vérification côté serveur  
+
+
+
 ## Task 8 — Nettoyage et conformité
 
 - Vérification effectuée : aucune donnée sensible réelle (token, mot de passe, clé API) présente dans le rapport.
@@ -184,6 +292,7 @@ Pour l’analyse statique d’un APK Android (manifest + ressources + code), **J
   ### Nettoyage des artefacts temporaires
 
 ![cleanup](images/29.png)
+
 
 ## Résumé exécutif
 
@@ -197,6 +306,7 @@ Les principales observations concernent :
 
 Aucune permission dangereuse, aucun token, ni clé API de production n’ont été identifiés.  
 Cependant, les pratiques cryptographiques et l’exposition de logique sensible justifient une vigilance particulière.
+Le secret a pu être récupéré par analyse statique, démontrant la faiblesse du mécanisme de protection côté client.
 
 ### Niveau de risque global : **Moyen**
 
