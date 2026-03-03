@@ -175,6 +175,203 @@ Classe analysée dans les deux outils : `sg.vantagepoint.uncrackable1.MainActivi
 Pour l’analyse statique d’un APK Android (manifest + ressources + code), **JADX** est plus adapté. **JD-GUI** reste utile comme vue alternative Java, notamment pour comparer la décompilation.
 
 
+# Contournement de la Détection Root (Frida)
+
+## Objectif
+
+Contourner le mécanisme de détection root implémenté dans OWASP UnCrackable Level 1 en utilisant l’instrumentation dynamique avec Frida, sans modifier l’APK.
+
+![compare](images/43.png)
+
+---
+
+## Détection Root Observée
+
+Lors du lancement de l’application sur un émulateur rooté, la fenêtre suivante apparaît :
+
+![compare](images/36.png)
+
+L’application se ferme immédiatement après la détection.
+
+---
+
+## Code de Détection Root 
+
+La détection root est déclenchée dans :
+
+sg.vantagepoint.uncrackable1.MainActivity#onCreate()
+
+```java
+if (c.a() || c.b() || c.c()) {
+    a("Root detected!");
+}
+```
+
+La logique de détection est implémentée dans :
+
+sg.vantagepoint.a.c
+
+Vérifications effectuées :
+
+c.a() → Recherche du binaire su dans le PATH  
+c.b() → Vérifie si Build.TAGS contient "test-keys"  
+c.c() → Recherche d’artefacts root connus  
+
+---
+
+##  Installation de Frida (Machine Windows)
+
+Installation des outils Frida via pip :
+
+```bash
+pip install frida-tools
+```
+
+![compare](images/37.png)
+
+---
+
+##  Déploiement du Serveur Frida (Émulateur)
+
+Fichier téléchargé :
+https://github.com/frida/frida/releases?page=9
+frida-server-16.3.3-android-x86_64.xz
+
+Extraction et renommage en :
+
+frida-server
+
+Envoi vers l’émulateur :
+
+```bash
+adb root
+adb push frida-server /data/local/tmp/
+adb shell chmod 755 /data/local/tmp/frida-server
+```
+
+![compare](images/39.png)
+
+Exécution du serveur Frida :
+
+```bash
+adb shell
+su
+/data/local/tmp/frida-server &
+```
+
+![compare](images/40.png)
+
+Vérification de la connexion :
+
+```bash
+frida-ps -U
+```
+
+![compare](images/41.png)
+
+Émulateur détecté avec succès.
+
+---
+
+##  Script de Contournement
+
+Fichier créé :
+
+bypass.js
+
+Contenu du script :
+
+```javascript
+Java.perform(function () {
+
+    var rootClass = Java.use("sg.vantagepoint.a.c");
+
+    rootClass.a.implementation = function () {
+        console.log("Contournement c.a()");
+        return false;
+    };
+
+    rootClass.b.implementation = function () {
+        console.log("Contournement c.b()");
+        return false;
+    };
+
+    rootClass.c.implementation = function () {
+        console.log("Contournement c.c()");
+        return false;
+    };
+
+});
+```
+
+---
+
+## Exécution du Contournement
+
+Lancement de l’application via Frida :
+
+```bash
+frida -U -f owasp.mstg.uncrackable1 -l bypass.js
+```
+
+Sortie console confirmant les hooks :
+
+
+
+```
+Contournement c.a()
+Contournement c.b()
+Contournement c.c()
+```
+
+---
+
+## Résultat Après Contournement
+
+L’application se lance désormais normalement sans afficher "Root detected!".
+
+![compare](images/42.png)
+
+La détection root a été neutralisée dynamiquement à l’exécution.
+
+---
+
+##  Interprétation Sécurité
+
+Cette expérience démontre :
+
+La détection root est implémentée uniquement côté client  
+
+Les vérifications statiques sont facilement contournables via instrumentation dynamique  
+
+Les contrôles de sécurité côté client seuls sont insuffisants  
+
+---
+
+##  Évaluation du Risque
+
+| Mécanisme de protection | Robustesse | Difficulté de contournement |
+|--------------------------|------------|-----------------------------|
+| Détection du binaire su | Faible     | Facile                      |
+| Vérification Build.TAGS | Faible     | Facile                      |
+| Recherche de fichiers   | Faible     | Facile                      |
+
+Niveau global de protection dynamique : Faible
+
+---
+
+##  Conclusion
+
+À l’aide de Frida, nous avons contourné avec succès tous les mécanismes de détection root dynamiquement sans modifier l’APK.
+
+Cela confirme :
+
+Les protections côté client ne sont pas fiables face à la manipulation à l’exécution  
+
+La logique sensible ne doit pas reposer uniquement sur des vérifications d’environnement  
+
+Des protections renforcées (anti-hooking, vérification d’intégrité, validation serveur) sont nécessaires pour des applications en production  
+
 # Crack — Récupération du secret par analyse statique
 
 
